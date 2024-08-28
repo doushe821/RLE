@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
+#include <limits.h>
 // TODO: в отдельный файл
 
 const size_t initialCallocMem = 4;
@@ -47,7 +48,6 @@ struct testData
 struct encoderOutput encode (const char* uncoded, int stringSize);
 struct encoderOutput decode (char* coded);
 bool UnitTest(struct testData test);
-int digits(int a);
 void freeDynamicMemory(dynamicMemoryTracker tracker);
 
 int main()
@@ -68,12 +68,12 @@ int main()
 
 struct encoderOutput encode (const char* uncoded, int stringSize)
 {
-    struct dynamicMemoryTracker encodeMemoryTracker = 
+    struct dynamicMemoryTracker encodeMemoryTracker =
     {
+        initialCallocMem,
         0,
         0,
         MemReallocCoefficient,
-        initialCallocMem,
         NULL
     };
 
@@ -120,16 +120,35 @@ struct encoderOutput encode (const char* uncoded, int stringSize)
 
 struct encoderOutput decode (const char* coded, int stringSize)
 {
-    struct dynamicMemoryTracker decodeMemoryTracker
+    struct dynamicMemoryTracker decodeMemoryTracker =
     {
+        initialCallocMem,
         0,
         0,
         MemReallocCoefficient,
-        initialCallocMem,
         NULL
     };
 
+    int length = 0;
+    decodeMemoryTracker.ptr = calloc(decodeMemoryTracker.initialAllocation,);
+    for(int k = 0; k < stringSize/2; k+=2)
+    {
+        for(int m = 0; m <= coded[k]; m++)
+        {
+            decodeMemoryTracker.ptr[length++] = coded[k+1];
+            decodeMemoryTracker.used += 1;
+            if(length >= decodeMemoryTracker.allocated)
+            {
+                char* newptr = (char*) realloc(decodeMemoryTracker.ptr, decodeMemoryTracker.allocated*sizeof(char)*decodeMemoryTracker.reallocCoef);
+                decodeMemoryTracker.allocated *= decodeMemoryTracker.reallocCoef;
+            }
+        }
+    }
 
+    struct encoderOutput output = {};
+    output.line = decodeMemoryTracker.ptr;
+    output.lineLength = length;
+    return output;
 }
 
 bool UnitTest(struct testData test)
