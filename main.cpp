@@ -4,110 +4,144 @@
 #include <ctype.h>
 #include <math.h>
 // TODO: в отдельный файл
-enum errors
+
+const size_t initialCallocMem = 4;
+const int MemReallocCoefficient  = 2;
+
+enum error
 {
-    NO_ACCESSIBLE_MEMORY = 1
+    NO_ERRORS = 0,
+    NO_ACCESSIBLE_MEMORY
 };
 
 struct encoderOutput
 {
     char* line;
     int lineLength;
-    enum errors errorFlag;
+    enum error errorFlag;
 };
 
 struct dynamicMemoryTracker 
 {
-    int allocated;
-    int used;
-    int reallocCoef
-    };
+    size_t initialAllocation;
+    size_t allocated;
+    size_t used;
+    int reallocCoef;
+    char* ptr;
+};
+
+struct encoderTracker
+{
+    char repeatCounter;
+    char currentChar;
+    int outputLineIndex;
+};
 
 struct testData
 {
     const char* line;
+    const int lineLength;
     const char* refLine;
 };
 
-const int initialCallocMemory = 1024;
-
 struct encoderOutput encode (const char* uncoded, int stringSize);
 struct encoderOutput decode (char* coded);
-int UnitTest(struct testData test);
+bool UnitTest(struct testData test);
 int digits(int a);
+void freeDynamicMemory(dynamicMemoryTracker tracker);
 
 int main()
 {
     struct testData test1 =
     {
         "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq sssssssssssssssss 32",
-        "\057q\001 \017s\001 \0013 \0012"
+        78,
+        "\071q\001 \021s\001 \0013\0012"
     };
 
-    UnitTest(test1);
+    printf("%s\n", test1.refLine);
+    if(UnitTest(test1))
+        printf("\nAll good");
+    else
+        printf("\nGot an error");
 }
 
 struct encoderOutput encode (const char* uncoded, int stringSize)
 {
+    struct dynamicMemoryTracker encodeMemoryTracker = 
+    {
+        0,
+        0,
+        MemReallocCoefficient,
+        initialCallocMem,
+        NULL
+    };
 
     encoderOutput output = {};
-    char* codedLine = (char*) calloc(initialCallocMemory, sizeof(char)); // FIXME
-    if(!codedLine)
+    encodeMemoryTracker.ptr = (char*) calloc(encodeMemoryTracker.initialAllocation, sizeof(char)); 
+    encodeMemoryTracker.allocated = encodeMemoryTracker.initialAllocation;
+    if(!encodeMemoryTracker.ptr)
     {
         output.errorFlag = NO_ACCESSIBLE_MEMORY;
         return output;
     }
 
-    int n = 0;
+    struct encoderTracker track =
+    {1, 0, 0};
+
     for(int k = 0; k < stringSize; k++)
     { 
-        char rCount = 1;
-        char curChar = 0;
-        curChar = uncoded[k];
+        track.repeatCounter = 1;
+        track.currentChar = uncoded[k];
         while(uncoded[k] == uncoded [k+1]) 
         {
-            rCount++;
+            track.repeatCounter++;
             k++;
         }
-        codedLine[n++] = rCount;
-        codedLine[n++] = curChar;
-        char* newptr = (char*) realloc(codedLine, 2*sizeof(char));
-        if (newptr == NULL)
+        encodeMemoryTracker.ptr[track.outputLineIndex++] = track.repeatCounter;
+        encodeMemoryTracker.ptr[track.outputLineIndex++] = track.currentChar;
+        encodeMemoryTracker.used += 2;
+        if(encodeMemoryTracker.used == encodeMemoryTracker.allocated)
         {
-            output.errorFlag = NO_ACCESSIBLE_MEMORY;
-            return output;
+            char* newptr = (char*) realloc(encodeMemoryTracker.ptr, encodeMemoryTracker.allocated*sizeof(char)*encodeMemoryTracker.reallocCoef);
+            if (newptr == NULL)
+            {
+                output.errorFlag = NO_ACCESSIBLE_MEMORY;
+                return output;
+            }
+            encodeMemoryTracker.allocated *= encodeMemoryTracker.reallocCoef;
         }
     }
-    printf("codedLine: %s\n\n", codedLine);
-    output.line = codedLine;
+    printf("%s", encodeMemoryTracker.ptr);
+    output.line = encodeMemoryTracker.ptr;
+    output.lineLength = track.outputLineIndex;
     return output;
 }
 
-int digits(int a)
+struct encoderOutput decode (const char* coded, int stringSize)
 {
-    int tenPower = 10;
-    if(a < tenPower)
-        return 1;
-
-    int c = 1;
-    while(a >= tenPower)
+    struct dynamicMemoryTracker decodeMemoryTracker
     {
-        c++;
-        tenPower *= tenPower;
-    }
+        0,
+        0,
+        MemReallocCoefficient,
+        initialCallocMem,
+        NULL
+    };
 
-    return c;  
+
 }
 
-int UnitTest(struct testData test)
+bool UnitTest(struct testData test)
 {
-    int ErrorsNum = 0;
-    if(strcmp(encode(test.line, 78).line, test.refLine) != 0)
-    {
-        printf("errir");
-        return 1;
-    }
+    if(strcmp(encode(test.line, test.lineLength).line, test.refLine) != 0)
+        return false;
     else
-        printf("all good");
-    return ErrorsNum;
+        return true;
 }
+
+void freeDynamicMemory(dynamicMemoryTracker tracker)
+{
+    free(tracker.ptr);
+}
+
