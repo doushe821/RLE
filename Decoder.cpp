@@ -1,9 +1,12 @@
 #include <stdlib.h>
-#include <rle.h>
+#include "rle.h"
+#include "dynamicMemorySupport.h"
+#include <stdio.h>
+#include <assert.h>
 
 struct encoderOutput decode (const char* coded, int stringSize)
 {
-    struct dynamicMemoryTracker decodeMemoryTracker =
+    struct dynamicMemoryTracker dMemTracker =
     {
         initialCallocMem,
         0,
@@ -12,28 +15,40 @@ struct encoderOutput decode (const char* coded, int stringSize)
         NULL
     };
 
-    int length = 0;
-    decodeMemoryTracker.ptr = (char*) calloc(decodeMemoryTracker.initialAllocation, sizeof(char));
-    for(int k = 0; k < stringSize/2; k+=2)
+    struct encoderOutput output = {};
+    dMemTracker.ptr = (char*) calloc(dMemTracker.initialAllocation, sizeof(char));
+    dMemTracker.allocated = dMemTracker.initialAllocation;
+    if(!dMemTracker.ptr)
     {
-        for(int m = 0; m <= coded[k]; m++)
-        {
-            
-            while(coded[k] >= CHAR_MAX)
-            {
-                decodeMemoryTracker.ptr[length++] = coded[k+1];
-                decodeMemoryTracker.used += 1;
-                if(length >= decodeMemoryTracker.allocated)
-                {
-                    char* newptr = (char*) realloc(decodeMemoryTracker.ptr, decodeMemoryTracker.allocated*sizeof(char)*decodeMemoryTracker.reallocCoef);
-                    decodeMemoryTracker.allocated *= decodeMemoryTracker.reallocCoef;
-                }
-            }
-        }
+        output.errorFlag = NO_ACCESSIBLE_MEMORY;
+        return output;
     }
 
-    struct encoderOutput output = {};
-    output.line = decodeMemoryTracker.ptr;
+    int length = 0;
+    for(int k = 0; k < stringSize; k+=2)
+    {
+        for(int m = 0; m < coded[k]; m++)
+        { 
+            if(length >= (int) dMemTracker.allocated)
+            {
+                char* newptrD = (char*) realloc(dMemTracker.ptr, dMemTracker.allocated*sizeof(char)*dMemTracker.reallocCoef);
+                if(newptrD == NULL)
+                {
+                    assert(0 && "no mem");   //TODO - replace (was a temporal solution)
+                    output.errorFlag = NO_ACCESSIBLE_MEMORY;
+                    return output;
+                }
+                dMemTracker.allocated *= dMemTracker.reallocCoef;
+            }   
+            dMemTracker.ptr[length++] = coded[k+1];
+            dMemTracker.used += 1;
+        }
+        //fprintf(stderr, "Memory allocated: %zu\n", dMemTracker.allocated);
+        //fprintf(stderr, "Memory used: %zu\n", dMemTracker.used);
+    } 
+    printf("%s\n", dMemTracker.ptr);
+    output.line = dMemTracker.ptr;
     output.lineLength = length;
     return output;
 }
+

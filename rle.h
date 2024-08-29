@@ -1,6 +1,8 @@
 #ifndef RUN_LENGTH_ENCODER_INCLUDED
 #define RUN_LENGTH_ENCODER_INCLUDED
 
+const char MASK = 128;
+
 enum error
 {
     NO_ERRORS = 0,
@@ -17,6 +19,7 @@ struct encoderOutput
 struct encoderTracker
 {
     char repeatCounter;
+    char uniqueCounter;
     char currentChar;
     int outputLineIndex;
 };

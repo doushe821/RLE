@@ -15,18 +15,7 @@ void freeDynamicMemory(dynamicMemoryTracker tracker);
 
 int main()
 {
-    struct testData test1 =
-    {
-        "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq sssssssssssssssss 32",
-        78,
-        "\071q\001 \021s\001 \0013\0012"
-    };
-
-    printf("%s\n", test1.refLine);
-    if(RunTest(test1))
-        printf("\nAll good");
-    else
-        printf("\nGot an error");
+    UnitTest();
 }
 
 void freeDynamicMemory(dynamicMemoryTracker tracker)

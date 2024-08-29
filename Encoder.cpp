@@ -4,7 +4,8 @@
 
 struct encoderOutput encode (const char* uncoded, int stringSize)
 {
-    struct dynamicMemoryTracker encodeMemoryTracker =
+
+    struct dynamicMemoryTracker eMemTracker =
     {
         initialCallocMem,
         0,
@@ -14,9 +15,9 @@ struct encoderOutput encode (const char* uncoded, int stringSize)
     };
 
     encoderOutput output = {};
-    encodeMemoryTracker.ptr = (char*) calloc(encodeMemoryTracker.initialAllocation, sizeof(char)); 
-    encodeMemoryTracker.allocated = encodeMemoryTracker.initialAllocation;
-    if(!encodeMemoryTracker.ptr)
+    eMemTracker.ptr = (char*) calloc(eMemTracker.initialAllocation, sizeof(char)); 
+    eMemTracker.allocated = eMemTracker.initialAllocation;
+    if(!eMemTracker.ptr)
     {
         output.errorFlag = NO_ACCESSIBLE_MEMORY;
         return output;
@@ -32,25 +33,28 @@ struct encoderOutput encode (const char* uncoded, int stringSize)
         while(uncoded[k] == uncoded [k+1]) 
         {
             if(track.repeatCounter == CHAR_MAX)
+            {
+                k++;
                 break;
+            }
             track.repeatCounter++;
             k++;
         }
-        encodeMemoryTracker.ptr[track.outputLineIndex++] = track.repeatCounter;
-        encodeMemoryTracker.ptr[track.outputLineIndex++] = track.currentChar;
-        encodeMemoryTracker.used += 2;
-        if(encodeMemoryTracker.used == encodeMemoryTracker.allocated)
+        eMemTracker.ptr[track.outputLineIndex++] = track.repeatCounter;
+        eMemTracker.ptr[track.outputLineIndex++] = track.currentChar;
+        eMemTracker.used += 2;
+        if(eMemTracker.used == eMemTracker.allocated)
         {
-            char* newptr = (char*) realloc(encodeMemoryTracker.ptr, encodeMemoryTracker.allocated*sizeof(char)*encodeMemoryTracker.reallocCoef);
-            if (newptr == NULL)
+            char* newptrE = (char*) realloc(eMemTracker.ptr, eMemTracker.allocated*sizeof(char)*eMemTracker.reallocCoef);
+            if (newptrE == NULL)
             {
                 output.errorFlag = NO_ACCESSIBLE_MEMORY;
                 return output;
             }
-            encodeMemoryTracker.allocated *= encodeMemoryTracker.reallocCoef;
+            eMemTracker.allocated *= eMemTracker.reallocCoef;
         }
     }
-    output.line = encodeMemoryTracker.ptr;
+    output.line = eMemTracker.ptr;
     output.lineLength = track.outputLineIndex;
     return output;
 }
