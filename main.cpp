@@ -4,50 +4,13 @@
 #include <ctype.h>
 #include <math.h>
 #include <limits.h>
+#include "UnitTest.h"
+#include "rle.h"
+#include "dynamicMemorySupport.h"
 // TODO: в отдельный файл
 
-const size_t initialCallocMem = 4;
-const int MemReallocCoefficient  = 2;
 
-enum error
-{
-    NO_ERRORS = 0,
-    NO_ACCESSIBLE_MEMORY
-};
 
-struct encoderOutput
-{
-    char* line;
-    int lineLength;
-    enum error errorFlag;
-};
-
-struct dynamicMemoryTracker 
-{
-    size_t initialAllocation;
-    size_t allocated;
-    size_t used;
-    int reallocCoef;
-    char* ptr;
-};
-
-struct encoderTracker
-{
-    char repeatCounter;
-    char currentChar;
-    int outputLineIndex;
-};
-
-struct testData
-{
-    const char* line;
-    const int lineLength;
-    const char* refLine;
-};
-
-struct encoderOutput encode (const char* uncoded, int stringSize);
-struct encoderOutput decode (char* coded);
-bool UnitTest(struct testData test);
 void freeDynamicMemory(dynamicMemoryTracker tracker);
 
 int main()
@@ -60,103 +23,10 @@ int main()
     };
 
     printf("%s\n", test1.refLine);
-    if(UnitTest(test1))
+    if(RunTest(test1))
         printf("\nAll good");
     else
         printf("\nGot an error");
-}
-
-struct encoderOutput encode (const char* uncoded, int stringSize)
-{
-    struct dynamicMemoryTracker encodeMemoryTracker =
-    {
-        initialCallocMem,
-        0,
-        0,
-        MemReallocCoefficient,
-        NULL
-    };
-
-    encoderOutput output = {};
-    encodeMemoryTracker.ptr = (char*) calloc(encodeMemoryTracker.initialAllocation, sizeof(char)); 
-    encodeMemoryTracker.allocated = encodeMemoryTracker.initialAllocation;
-    if(!encodeMemoryTracker.ptr)
-    {
-        output.errorFlag = NO_ACCESSIBLE_MEMORY;
-        return output;
-    }
-
-    struct encoderTracker track =
-    {1, 0, 0};
-
-    for(int k = 0; k < stringSize; k++)
-    { 
-        track.repeatCounter = 1;
-        track.currentChar = uncoded[k];
-        while(uncoded[k] == uncoded [k+1]) 
-        {
-            track.repeatCounter++;
-            k++;
-        }
-        encodeMemoryTracker.ptr[track.outputLineIndex++] = track.repeatCounter;
-        encodeMemoryTracker.ptr[track.outputLineIndex++] = track.currentChar;
-        encodeMemoryTracker.used += 2;
-        if(encodeMemoryTracker.used == encodeMemoryTracker.allocated)
-        {
-            char* newptr = (char*) realloc(encodeMemoryTracker.ptr, encodeMemoryTracker.allocated*sizeof(char)*encodeMemoryTracker.reallocCoef);
-            if (newptr == NULL)
-            {
-                output.errorFlag = NO_ACCESSIBLE_MEMORY;
-                return output;
-            }
-            encodeMemoryTracker.allocated *= encodeMemoryTracker.reallocCoef;
-        }
-    }
-    printf("%s", encodeMemoryTracker.ptr);
-    output.line = encodeMemoryTracker.ptr;
-    output.lineLength = track.outputLineIndex;
-    return output;
-}
-
-struct encoderOutput decode (const char* coded, int stringSize)
-{
-    struct dynamicMemoryTracker decodeMemoryTracker =
-    {
-        initialCallocMem,
-        0,
-        0,
-        MemReallocCoefficient,
-        NULL
-    };
-
-    int length = 0;
-    decodeMemoryTracker.ptr = calloc(decodeMemoryTracker.initialAllocation,);
-    for(int k = 0; k < stringSize/2; k+=2)
-    {
-        for(int m = 0; m <= coded[k]; m++)
-        {
-            decodeMemoryTracker.ptr[length++] = coded[k+1];
-            decodeMemoryTracker.used += 1;
-            if(length >= decodeMemoryTracker.allocated)
-            {
-                char* newptr = (char*) realloc(decodeMemoryTracker.ptr, decodeMemoryTracker.allocated*sizeof(char)*decodeMemoryTracker.reallocCoef);
-                decodeMemoryTracker.allocated *= decodeMemoryTracker.reallocCoef;
-            }
-        }
-    }
-
-    struct encoderOutput output = {};
-    output.line = decodeMemoryTracker.ptr;
-    output.lineLength = length;
-    return output;
-}
-
-bool UnitTest(struct testData test)
-{
-    if(strcmp(encode(test.line, test.lineLength).line, test.refLine) != 0)
-        return false;
-    else
-        return true;
 }
 
 void freeDynamicMemory(dynamicMemoryTracker tracker)
